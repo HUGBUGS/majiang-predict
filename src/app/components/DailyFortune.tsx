@@ -1,132 +1,107 @@
 'use client';
 
-import { Card, Tag, Typography } from 'antd';
 import { useEffect, useState } from 'react';
+import { Card, Tag, Skeleton } from 'antd-mobile';
 import { FortuneData } from '../api/daily-fortune/route';
-
-const { Text } = Typography;
+import styles from './DailyFortune.module.css';
 
 export default function DailyFortune() {
   const [fortune, setFortune] = useState<FortuneData | null>(null);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  
+
   useEffect(() => {
-    // 从 API 获取今日运势数据
-    const fetchFortuneData = async () => {
+    const fetchFortune = async () => {
       try {
         setLoading(true);
         const response = await fetch('/api/daily-fortune');
-        
-        if (!response.ok) {
-          throw new Error(`API 请求失败: ${response.status}`);
-        }
-        
         const result = await response.json();
-        
-        if (result.success && result.data) {
+
+        if (result.success) {
           setFortune(result.data);
         } else {
-          throw new Error(result.message || '获取运势数据失败');
+          setError(result.message || '获取运势数据失败');
         }
       } catch (err) {
-        console.error('获取运势数据失败:', err);
-        setError(err instanceof Error ? err.message : '未知错误');
+        console.error('获取运势数据出错:', err);
+        setError('网络错误，请稍后再试');
       } finally {
         setLoading(false);
       }
     };
-    
-    fetchFortuneData();
+
+    fetchFortune();
   }, []);
-  
-  // 显示加载状态
+
   if (loading) {
     return (
-      <Card 
-        title="今日运势"
-        className="w-full max-w-4xl mb-6"
-        bordered={false}
-        style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-        loading={true}
-      />
+      <div className={styles.dailyFortune}>
+        <Card className={styles.fortuneCard}>
+          <div style={{ padding: '20px' }}>
+            <Skeleton.Title animated />
+            <Skeleton.Paragraph lineCount={5} animated />
+          </div>
+        </Card>
+      </div>
     );
   }
-  
-  // 显示错误信息
-  if (error || !fortune) {
+
+  if (error) {
     return (
-      <Card 
-        title="今日运势"
-        className="w-full max-w-4xl mb-6"
-        bordered={false}
-        style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-      >
-        <div className="text-center text-red-500">
-          {error || '无法加载运势数据'}
-        </div>
-      </Card>
+      <div className={styles.dailyFortune}>
+        <Card className={styles.fortuneCard}>
+          <div className={styles.errorMessage}>
+            <span>⚠️ {error}</span>
+          </div>
+        </Card>
+      </div>
     );
   }
-  
+
+  if (!fortune) {
+    return null;
+  }
+
   return (
-    <Card 
-      title={
-        <div className="flex justify-between items-center">
-          <span>今日运势</span>
-          <span className="text-sm font-normal text-gray-500">
-            {new Date(fortune.date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric' })}
-          </span>
+    <div className={styles.dailyFortune}>
+      <Card className={styles.fortuneCard}>
+        <div className={styles.cardTitle}>今日运势</div>
+        
+        <div className={styles.dateRow}>
+          <div className={styles.solarDate}>{fortune.date}</div>
+          <div className={styles.lunarDate}>{fortune.lunarDate}</div>
         </div>
-      }
-      className="w-full max-w-4xl mb-6"
-      bordered={false}
-      style={{ backgroundColor: 'rgba(255, 255, 255, 0.9)' }}
-    >
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div>
-          <div className="flex justify-between mb-2">
-            <Text strong>农历日期：</Text>
-            <Text>{fortune.lunarDate}</Text>
+        
+        <div className={styles.infoContainer}>
+          <div className={styles.infoItem}>
+            <span className={styles.label}>喜神生肖</span>
+            <span className={styles.value}>{fortune.chineseZodiac}</span>
           </div>
-          <div className="flex justify-between mb-2">
-            <Text strong>今日星宿：</Text>
-            <Text>{fortune.starSign}</Text>
-          </div>
-          <div className="flex justify-between mb-2">
-            <Text strong>生肖喜神：</Text>
-            <Text>{fortune.chineseZodiac}</Text>
-          </div>
-          <div className="flex justify-between mb-2">
-            <Text strong>吉利方位：</Text>
-            <Text>{fortune.luckyDirection}</Text>
-          </div>
-          <div className="flex justify-between mb-2">
-            <Text strong>幸运数字：</Text>
-            <Text>{fortune.luckyNumber}</Text>
+          
+          <div className={styles.infoItem}>
+            <span className={styles.label}>幸运星座</span>
+            <span className={styles.value}>{fortune.starSign}</span>
           </div>
         </div>
         
-        <div>
-          <div className="mb-3">
-            <Text strong className="block mb-2">今日宜：</Text>
-            <div>
-              {fortune.goodFor.map((item, index) => (
-                <Tag key={index} color="success" className="mb-1 mr-1">{item}</Tag>
-              ))}
-            </div>
-          </div>
-          
-          <div>
-            <Text strong className="block mb-2">今日忌：</Text>
-            <div>
-              {fortune.badFor.map((item, index) => (
-                <Tag key={index} color="error" className="mb-1 mr-1">{item}</Tag>
-              ))}
-            </div>
+        <div className={styles.fortuneSection}>
+          <div className={styles.sectionTitle}>宜</div>
+          <div className={styles.tagsContainer}>
+            {fortune.goodFor.map((item, index) => (
+              <Tag key={`good-${index}`} color="#4caf50" fill="outline" className={styles.fortuneTag}>{item}</Tag>
+            ))}
           </div>
         </div>
-      </div>
-    </Card>
+        
+        <div className={styles.fortuneSection}>
+          <div className={styles.sectionTitle}>忌</div>
+          <div className={styles.tagsContainer}>
+            {fortune.badFor.map((item, index) => (
+              <Tag key={`bad-${index}`} color="#f44336" fill="outline" className={styles.fortuneTag}>{item}</Tag>
+            ))}
+          </div>
+        </div>
+      </Card>
+    </div>
   );
 } 

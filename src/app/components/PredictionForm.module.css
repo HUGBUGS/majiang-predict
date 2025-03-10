@@ -1,0 +1,96 @@
+.predictionForm {
+  margin-bottom: 24px;
+}
+
+.formCard {
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+  background: #fff;
+  padding: 20px;
+}
+
+.cardTitle {
+  font-size: 1.6rem;
+  font-weight: 700;
+  color: #333;
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.formItem {
+}
+
+.formLabel {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #555;
+  margin-bottom: 8px;
+}
+
+.input {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  height: 40px;
+  line-height: 24px;
+}
+
+.datePicker {
+  width: 100%;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  background-color: #fff;
+  cursor: pointer;
+  height: 40px;
+  line-height: 24px;
+  display: flex;
+  align-items: center;
+}
+
+.datePickerText {
+  font-size: 1rem;
+  line-height: 24px;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cascader {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  font-size: 1rem;
+  background-color: #fff;
+  cursor: pointer;
+}
+
+.submitButton {
+  width: 100%;
+  padding: 12px;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #4caf50, #2e7d32);
+  color: white;
+  font-size: 1.1rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  margin-top: 16px;
+  transition: all 0.3s ease;
+}
+
+.submitButton:hover {
+  background: linear-gradient(135deg, #43a047, #2e7d32);
+  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
+}
+
+.submitButton:disabled {
+  background: #cccccc;
+  cursor: not-allowed;
+} 

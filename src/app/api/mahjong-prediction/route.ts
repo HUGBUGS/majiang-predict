@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { savePrediction } from '../../lib/db';
+import { savePrediction, getOrCreateUser, checkUserPredictionCount, getExistingPrediction } from '../../lib/db';
+import { getPersonalizedFortune } from '../../lib/openai';
 
 // 定义预测结果接口
 export interface PredictionResult {
@@ -15,56 +16,44 @@ export interface PredictionResult {
 // 定义请求参数接口
 export interface PredictionParams {
   name: string; // 姓名
-  birthdate: string; // 出生日期，格式为 YYYY-MM-DD
+  birthdate: string; // 出生日期，格式为 YYYY-MM-DD HH:mm:ss
   province: string; // 省份代码
   city: string; // 城市代码
   district: string; // 区县代码
+  deviceFingerprint: string; // 设备指纹
 }
 
+// 每日最大测算次数
+const MAX_PREDICTIONS_PER_DAY = 3;
+
 // 生成预测结果
-function generatePrediction(params: PredictionParams): PredictionResult {
-  // 在实际应用中，这里可能会基于用户输入的信息进行复杂计算
-  // 这里我们使用简单的随机算法
-  
-  const directions = ['东', '南', '西', '北'];
-  const colors = ['红色', '黄色', '蓝色', '绿色', '紫色', '白色', '黑色'];
-  const items = ['硬币', '红绳', '玉佩', '手链', '小挂件', '纸条', '茶叶'];
-  const advices = [
-    '今日宜打麻将，财运亨通',
-    '今日适合短局，不宜久坐',
-    '今日宜与好友同乐，忌独自出门',
-    '今日宜主动出击，不宜被动防守',
-    '今日宜稳健打法，不宜冒险',
-    '今日宜早起打牌，下午运势转弱',
-    '今日宜晚间打牌，上午运势不佳'
-  ];
-  
-  // 使用姓名和生日生成伪随机数
-  const nameSum = params.name.split('').reduce((sum, char) => sum + char.charCodeAt(0), 0);
-  const birthDate = new Date(params.birthdate);
-  const birthSum = birthDate.getFullYear() + birthDate.getMonth() + birthDate.getDate();
+async function generatePrediction(params: PredictionParams): Promise<PredictionResult> {
+  // 获取当前日期，使用中国时区 (UTC+8)
   const today = new Date();
-  const todaySum = today.getFullYear() + today.getMonth() + today.getDate();
+  // 调整为中国时区
+  const chinaDate = new Date(today.getTime() + 8 * 60 * 60 * 1000);
+  const formattedDate = chinaDate.toISOString().split('T')[0];
   
-  // 生成随机索引
-  const seed = (nameSum + birthSum + todaySum) % 100;
-  const directionIndex = seed % directions.length;
-  const colorIndex = (seed * 7) % colors.length;
-  const itemIndex = (seed * 13) % items.length;
-  const adviceIndex = (seed * 19) % advices.length;
-  const luckyNumber = (seed % 9) + 1; // 1-9 之间的数字
-  
-  // 格式化当前日期为 YYYY-MM-DD
-  const formattedDate = today.toISOString().split('T')[0];
-  
-  return {
-    direction: directions[directionIndex],
-    luckyNumber,
-    luckyColor: colors[colorIndex],
-    luckyItem: items[itemIndex],
-    advice: advices[adviceIndex],
-    date: formattedDate
-  };
+  try {
+    // 调用 AI 生成个性化预测结果
+    const fortuneData = await getPersonalizedFortune(params);
+    
+    // 确保 advice 不为 undefined
+    const advice = fortuneData.advice || `${params.name}今日宜坐${fortuneData.luckyDirection}方，带上${fortuneData.luckyNumber}元${fortuneData.luckyItem}作为幸运物。${fortuneData.goodFor.join('，')}。避免${fortuneData.badFor.join('，')}。`;
+    
+    // 直接使用 AI 生成的个性化预测结果
+    return {
+      direction: fortuneData.luckyDirection,
+      luckyNumber: fortuneData.luckyNumber,
+      luckyColor: fortuneData.luckyColor,
+      luckyItem: fortuneData.luckyItem,
+      advice,
+      date: formattedDate
+    };
+  } catch (error) {
+    console.error('生成预测结果失败:', error);
+    throw new Error('生成预测结果失败');
+  }
 }
 
 // 处理 POST 请求
@@ -74,35 +63,76 @@ export async function POST(request: NextRequest) {
     const params: PredictionParams = await request.json();
     
     // 验证必要参数
-    if (!params.name || !params.birthdate || !params.province || !params.city || !params.district) {
+    if (!params.name || !params.birthdate || !params.province || !params.city || !params.district || !params.deviceFingerprint) {
       return NextResponse.json(
         { success: false, message: '缺少必要参数' },
         { status: 400 }
       );
     }
     
-    // 生成预测结果
-    const prediction = generatePrediction(params);
+    // 获取或创建用户
+    const user = await getOrCreateUser(params.deviceFingerprint);
     
-    // 保存到数据库
-    const predictionId = await savePrediction({
-      ...prediction,
-      name: params.name,
-      birthdate: params.birthdate,
-      province: params.province,
-      city: params.city,
-      district: params.district
-    });
+    // 检查用户今日测算次数
+    const predictionCount = await checkUserPredictionCount(user.id);
+    
+    // 如果超过每日最大测算次数，返回错误
+    if (predictionCount >= MAX_PREDICTIONS_PER_DAY) {
+      return NextResponse.json(
+        { success: false, message: `您今日已达到最大测算次数（${MAX_PREDICTIONS_PER_DAY}次），请明天再来` },
+        { status: 429 }
+      );
+    }
+    
+    // 检查是否已存在相同条件的预测结果
+    const existingPrediction = await getExistingPrediction(
+      params.name,
+      params.birthdate,
+      params.province,
+      params.city,
+      params.district
+    );
+    
+    let prediction;
+    let predictionId;
+    
+    if (existingPrediction) {
+      // 如果存在相同条件的预测结果，直接使用
+      console.log('找到已存在的预测结果，直接返回');
+      prediction = existingPrediction;
+      predictionId = existingPrediction.id;
+    } else {
+      // 否则生成新的预测结果
+      console.log('生成新的预测结果');
+      prediction = await generatePrediction(params);
+      
+      // 保存到数据库
+      predictionId = await savePrediction({
+        userId: user.id,
+        name: params.name,
+        birthdate: params.birthdate,
+        province: params.province,
+        city: params.city,
+        district: params.district,
+        direction: prediction.direction,
+        luckyNumber: prediction.luckyNumber,
+        luckyColor: prediction.luckyColor,
+        luckyItem: prediction.luckyItem,
+        advice: prediction.advice,
+        date: prediction.date
+      });
+    }
     
     // 如果保存成功，添加 ID 到结果中
-    if (predictionId) {
+    if (predictionId && !prediction.id) {
       prediction.id = predictionId;
     }
     
     // 返回 JSON 响应
     return NextResponse.json({ 
       success: true, 
-      data: prediction 
+      data: prediction,
+      remainingCount: MAX_PREDICTIONS_PER_DAY - (predictionCount + (existingPrediction ? 0 : 1))
     });
   } catch (error) {
     console.error('生成预测结果失败:', error);
