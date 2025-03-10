@@ -65,7 +65,7 @@ export default function DailyFortune() {
   return (
     <div className={styles.dailyFortune}>
       <Card className={styles.fortuneCard}>
-        <div className={styles.cardTitle}>今日运势</div>
+        <div className={styles.cardTitle}>世界运势</div>
         
         <div className={styles.dateRow}>
           <div className={styles.solarDate}>{fortune.date}</div>
