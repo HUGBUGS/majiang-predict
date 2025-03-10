@@ -11,6 +11,15 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
+// 获取数据库连接
+async function getDB() {
+  return {
+    run: async (sql: string, params: any[]) => {
+      return await query(sql, params);
+    }
+  };
+}
+
 // 执行查询的辅助函数
 export async function query(sql: string, params: any[] = []) {
   try {
@@ -191,62 +200,118 @@ export async function checkUserPredictionCount(userId: number): Promise<number> 
 }
 
 // 保存预测结果并返回 ID（修改版，包含用户ID）
-export async function savePrediction(params: {
-  userId: number;
-  name: string;
-  birthdate: string;
-  province: string;
-  city: string;
-  district: string;
-  direction: string;
-  luckyNumber: number;
-  luckyColor: string;
-  luckyItem: string;
-  advice: string;
-  date: string;
-}) {
-  const sql = `
-    INSERT INTO predictions (
-      user_id,
-      user_name, 
-      birthdate, 
-      province, 
-      city, 
-      district, 
-      direction, 
-      lucky_number, 
-      lucky_color, 
-      lucky_item, 
-      advice, 
-      prediction_date,
-      created_at
-    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
-  `;
+export async function savePrediction(
+  userId: string,
+  name: string,
+  gender: string,
+  birthdate: string,
+  province: string,
+  city: string,
+  district: string,
+  bazi?: {
+    year?: string;
+    month?: string;
+    day?: string;
+    hour?: string;
+  },
+  baziAnalysis?: string,
+  wuxing?: {
+    summary?: string;
+    gold?: string;
+    wood?: string;
+    water?: string;
+    fire?: string;
+    earth?: string;
+  },
+  twelvePalaces?: {
+    minggong?: string;
+    wealth?: string;
+    health?: string;
+    travel?: string;
+  },
+  dayun?: string,
+  liunian?: string,
+  shenshas?: Array<{
+    name: string;
+    type: string;
+    description: string;
+    effect: string;
+  }>,
+  direction?: string,
+  luckyNumber?: string,
+  luckyColor?: string,
+  luckyItem?: string,
+  advice?: string,
+  predictionDate?: string
+) {
+  const db = await getDB();
   
-  const values = [
-    params.userId,
-    params.name,
-    params.birthdate,
-    params.province,
-    params.city,
-    params.district,
-    params.direction,
-    params.luckyNumber,
-    params.luckyColor,
-    params.luckyItem,
-    params.advice,
-    params.date
-  ];
-  
-  const result = await query(sql, values) as Record<string, any>;
-  
-  // 保存到历史记录
-  if (result.insertId) {
-    await saveHistory(params.userId, params.name, result.insertId, params.date);
-    return result.insertId;
+  try {
+    const sql = `
+      INSERT INTO predictions (
+        user_id, user_name, gender, birthdate, province, city, district,
+        bazi_year, bazi_month, bazi_day, bazi_hour, bazi_analysis,
+        wuxing_summary, wuxing_gold, wuxing_wood, wuxing_water, wuxing_fire, wuxing_earth,
+        twelve_palaces_minggong, twelve_palaces_wealth, twelve_palaces_health, twelve_palaces_travel,
+        dayun, liunian, shenshas,
+        direction, lucky_number, lucky_color, lucky_item, advice, prediction_date
+      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `;
+    
+    await db.run(sql, [
+      userId,
+      name,
+      gender,
+      birthdate,
+      province,
+      city,
+      district,
+      bazi?.year || null,
+      bazi?.month || null,
+      bazi?.day || null,
+      bazi?.hour || null,
+      baziAnalysis || null,
+      wuxing?.summary || null,
+      wuxing?.gold || null,
+      wuxing?.wood || null,
+      wuxing?.water || null,
+      wuxing?.fire || null,
+      wuxing?.earth || null,
+      twelvePalaces?.minggong || null,
+      twelvePalaces?.wealth || null,
+      twelvePalaces?.health || null,
+      twelvePalaces?.travel || null,
+      dayun || null,
+      liunian || null,
+      shenshas ? JSON.stringify(shenshas) : null,
+      direction || null,
+      luckyNumber || null,
+      luckyColor || null,
+      luckyItem || null,
+      advice || null,
+      predictionDate || new Date().toISOString().split('T')[0]
+    ]);
+    
+    // 获取最后插入的ID
+    const getLastIdSql = `SELECT last_insert_id() as id`;
+    const lastIdResult = await query(getLastIdSql) as any[];
+    const insertId = lastIdResult && lastIdResult.length > 0 ? lastIdResult[0].id : null;
+    
+    // 如果成功插入并获取到ID，保存到历史记录
+    if (insertId) {
+      await saveHistory(
+        parseInt(userId),
+        name,
+        insertId,
+        predictionDate || new Date().toISOString().split('T')[0]
+      );
+    }
+    
+    return insertId;
+  } catch (e) {
+    console.error('Error saving prediction:', e);
+    return null;
   }
-  
-  return null;
 }
 
 // 保存历史记录（修改版，包含用户ID）
@@ -307,38 +372,83 @@ export async function getUserHistory(userId: number, limit = 10) {
   return [];
 }
 
-// 获取预测结果
-export async function getPrediction(id: number) {
-  const sql = `
-    SELECT 
-      id,
-      user_name AS name,
-      direction,
-      lucky_number AS luckyNumber,
-      lucky_color AS luckyColor,
-      lucky_item AS luckyItem,
-      advice,
-      prediction_date AS date
-    FROM predictions 
-    WHERE id = ?
-  `;
-  
-  const results = await query(sql, [id]);
-  
-  if (Array.isArray(results) && results.length > 0) {
-    const prediction = results[0] as any;
+// 根据 ID 获取预测结果
+export async function getPrediction(predictionId: number) {
+  try {
+    const sql = `
+      SELECT 
+        id, user_id, user_name, gender,
+        bazi_year, bazi_month, bazi_day, bazi_hour, bazi_analysis,
+        wuxing_summary, wuxing_gold, wuxing_wood, wuxing_water, wuxing_fire, wuxing_earth,
+        twelve_palaces_minggong, twelve_palaces_wealth, twelve_palaces_health, twelve_palaces_travel,
+        dayun, liunian, shenshas,
+        birthdate, province, city, district,
+        direction, lucky_number, lucky_color, lucky_item, advice, prediction_date, created_at
+      FROM predictions
+      WHERE id = ? 
+      LIMIT 1
+    `;
     
-    // 格式化日期
-    if (prediction.date instanceof Date) {
-      // 调整为中国时区
-      const chinaDate = new Date(prediction.date.getTime() + 8 * 60 * 60 * 1000);
-      prediction.date = chinaDate.toISOString().split('T')[0];
+    const results = await query(sql, [predictionId]) as any[];
+    
+    if (!results || !Array.isArray(results) || results.length === 0) {
+      return null;
     }
     
-    return prediction;
+    const prediction = results[0];
+    
+    // 格式化日期为中国时区
+    const formatDate = (dateStr: string) => {
+      if (!dateStr) return '';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('zh-CN', { timeZone: 'Asia/Shanghai' });
+    };
+    
+    return {
+      id: prediction.id,
+      userId: prediction.user_id,
+      name: prediction.user_name,
+      gender: prediction.gender,
+      bazi: {
+        year: prediction.bazi_year || '',
+        month: prediction.bazi_month || '',
+        day: prediction.bazi_day || '',
+        hour: prediction.bazi_hour || ''
+      },
+      baziAnalysis: prediction.bazi_analysis || '',
+      wuxing: {
+        summary: prediction.wuxing_summary || '',
+        gold: prediction.wuxing_gold || '',
+        wood: prediction.wuxing_wood || '',
+        water: prediction.wuxing_water || '',
+        fire: prediction.wuxing_fire || '',
+        earth: prediction.wuxing_earth || ''
+      },
+      twelvePalaces: {
+        minggong: prediction.twelve_palaces_minggong || '',
+        wealth: prediction.twelve_palaces_wealth || '',
+        health: prediction.twelve_palaces_health || '',
+        travel: prediction.twelve_palaces_travel || ''
+      },
+      dayun: prediction.dayun || '',
+      liunian: prediction.liunian || '',
+      shenshas: prediction.shenshas ? JSON.parse(prediction.shenshas) : [],
+      birthdate: formatDate(prediction.birthdate),
+      province: prediction.province || '',
+      city: prediction.city || '',
+      district: prediction.district || '',
+      direction: prediction.direction || '',
+      luckyNumber: prediction.lucky_number || '',
+      luckyColor: prediction.lucky_color || '',
+      luckyItem: prediction.lucky_item || '',
+      advice: prediction.advice || '',
+      predictionDate: formatDate(prediction.prediction_date),
+      createdAt: formatDate(prediction.created_at)
+    };
+  } catch (e) {
+    console.error('Error getting prediction:', e);
+    return null;
   }
-  
-  return null;
 }
 
 // 获取历史记录
@@ -377,6 +487,7 @@ export async function getHistory(limit = 10) {
 /**
  * 根据用户姓名、出生日期、出生地点和当前日期查询已存在的预测结果
  * @param name 用户姓名
+ * @param gender 性别
  * @param birthdate 出生日期
  * @param province 省份
  * @param city 城市
@@ -385,6 +496,7 @@ export async function getHistory(limit = 10) {
  */
 export async function getExistingPrediction(
   name: string,
+  gender: 'male' | 'female',
   birthdate: string,
   province: string,
   city: string,
@@ -395,6 +507,7 @@ export async function getExistingPrediction(
   const chinaDate = new Date(today.getTime() + 8 * 60 * 60 * 1000);
   const formattedDate = chinaDate.toISOString().split('T')[0];
   
+  // 只查找完全匹配的记录：同姓名+同性别+同出生地点+同出生日期
   const sql = `
     SELECT 
       id,
@@ -407,23 +520,16 @@ export async function getExistingPrediction(
     FROM predictions
     WHERE 
       user_name = ? AND
+      gender = ? AND
       birthdate = ? AND
       province = ? AND
       city = ? AND
       district = ? AND
       DATE(prediction_date) = ?
-    ORDER BY created_at DESC
     LIMIT 1
   `;
   
-  const results = await query(sql, [
-    name,
-    birthdate,
-    province,
-    city,
-    district,
-    formattedDate
-  ]);
+  const results = await query(sql, [name, gender, birthdate, province, city, district, formattedDate]);
   
   if (Array.isArray(results) && results.length > 0) {
     const prediction = results[0] as any;
@@ -435,6 +541,7 @@ export async function getExistingPrediction(
       prediction.date = chinaDate.toISOString().split('T')[0];
     }
     
+    console.log('找到完全匹配的预测结果');
     return prediction;
   }
   

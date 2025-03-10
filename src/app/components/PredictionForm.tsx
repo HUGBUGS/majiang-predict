@@ -1,16 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import { Form, Input, Button, Cascader, Toast, DatePicker } from 'antd-mobile';
+import { Form, Input, Button, Cascader, DatePicker, Radio, SpinLoading } from 'antd-mobile';
 import { useRouter } from 'next/navigation';
 import { CascaderValue } from 'antd-mobile/es/components/cascader';
+import { RadioValue } from 'antd-mobile/es/components/radio';
 import { areaList, getAreaNameByCode } from '../utils/areaData';
 import { getDeviceFingerprint } from '../utils/fingerprint';
+import { showToast } from '../utils/toast';
 import styles from './PredictionForm.module.css';
 
 // 定义表单数据接口
 interface FormData {
   name: string;
+  gender: 'male' | 'female';
   birthDateTime?: Date;
   area?: CascaderValue[];
 }
@@ -18,6 +21,7 @@ interface FormData {
 // 定义提交数据接口
 interface SubmitData {
   name: string;
+  gender: 'male' | 'female';
   birthdate?: string;
   province?: string;
   city?: string;
@@ -29,6 +33,7 @@ export default function PredictionForm() {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [nameValue, setNameValue] = useState('');
+  const [genderValue, setGenderValue] = useState<'male' | 'female'>('male');
   const [birthDateValue, setBirthDateValue] = useState<Date | null>(null);
   const [datePickerVisible, setDatePickerVisible] = useState(false);
   const [areaPickerVisible, setAreaPickerVisible] = useState(false);
@@ -52,26 +57,29 @@ export default function PredictionForm() {
     }
   };
   
+  // 处理性别选择变化
+  const handleGenderChange = (val: RadioValue) => {
+    const value = val.toString();
+    setGenderValue(value as 'male' | 'female');
+    form.setFieldValue('gender', value);
+  };
+  
   const onFinish = async (values: FormData) => {
     try {
       setLoading(true);
       
       // 使用状态中的日期，因为表单可能没有正确捕获
       if (!birthDateValue) {
-        Toast.show({
-          content: '请选择出生日期时间',
-          position: 'bottom',
-        });
+        console.log('显示提示：请选择出生日期时间');
+        showToast('请选择出生日期时间', 'bottom');
         setLoading(false);
         return;
       }
       
       // 检查地区选择
       if (!values.area || values.area.length < 3) {
-        Toast.show({
-          content: '请完整选择省市区',
-          position: 'bottom',
-        });
+        console.log('显示提示：请完整选择省市区');
+        showToast('请完整选择省市区', 'bottom');
         setLoading(false);
         return;
       }
@@ -103,6 +111,7 @@ export default function PredictionForm() {
       // 准备提交的数据
       const data: SubmitData = {
         name: values.name,
+        gender: values.gender,
         birthdate,
         province,
         city,
@@ -111,12 +120,9 @@ export default function PredictionForm() {
       };
       
       // 检查所有必要参数
-      if (!data.name || !data.birthdate || !data.province || !data.city || !data.district || !data.deviceFingerprint) {
+      if (!data.name || !data.gender || !data.birthdate || !data.province || !data.city || !data.district || !data.deviceFingerprint) {
         console.error('缺少必要参数:', data);
-        Toast.show({
-          content: '表单数据不完整，请检查所有字段',
-          position: 'bottom',
-        });
+        showToast('表单数据不完整，请检查所有字段', 'bottom');
         setLoading(false);
         return;
       }
@@ -131,12 +137,36 @@ export default function PredictionForm() {
         body: JSON.stringify(data),
       });
       
+      // 关闭加载提示（无论成功失败）
+      document.querySelectorAll('[data-toast-loading="true"]').forEach(el => {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
+      
       console.log('接口响应状态:', response.status, response.statusText);
       
       // 检查响应状态
       if (!response.ok) {
         const errorText = await response.text();
         console.error('接口返回错误:', response.status, errorText);
+        
+        // 特别处理 429 状态码（达到最大测算次数）
+        if (response.status === 429) {
+          try {
+            // 尝试解析错误响应为 JSON
+            const errorJson = JSON.parse(errorText);
+            console.log('显示最大测算次数提示');
+            showToast(errorJson.message || '您今日已达到最大测算次数，请明天再来', 'center', 3000);
+          } catch {
+            // 如果解析失败，显示默认消息
+            console.log('显示默认最大测算次数提示');
+            showToast('您今日已达到最大测算次数，请明天再来', 'center', 3000);
+          }
+          setLoading(false);
+          return;
+        }
+        
         throw new Error(`接口返回错误: ${response.status} ${errorText}`);
       }
       
@@ -144,23 +174,31 @@ export default function PredictionForm() {
       console.log('接口返回数据:', result);
       
       if (result.success) {
-        // 跳转到结果页面
+        // 直接跳转到结果页面
         router.push(`/result?id=${result.data.id}`);
       } else {
-        Toast.show({
-          content: result.message || '预测失败，请重试',
-          position: 'bottom',
-        });
+        // 处理其他错误情况
+        showToast(result.message || '预测失败，请重试', 'bottom');
       }
     } catch (error) {
       console.error('预测请求失败:', error);
-      // 显示更详细的错误信息
-      Toast.show({
-        content: error instanceof Error ? `错误: ${error.message}` : '网络错误，请稍后再试',
-        position: 'bottom',
-      });
+      const errorMessage = error instanceof Error ? error.message : '网络错误，请稍后再试';
+      
+      // 检查错误消息中是否包含"最大测算次数"
+      if (errorMessage.includes('最大测算次数')) {
+        showToast('您今日已达到最大测算次数，请明天再来', 'center', 3000);
+      } else {
+        showToast(errorMessage, 'bottom');
+      }
     } finally {
       setLoading(false);
+      
+      // 确保关闭加载提示
+      document.querySelectorAll('[data-toast-loading="true"]').forEach(el => {
+        if (el.parentNode) {
+          el.parentNode.removeChild(el);
+        }
+      });
     }
   };
   
@@ -203,6 +241,7 @@ export default function PredictionForm() {
           className={styles.form}
           initialValues={{
             name: '',
+            gender: 'male',
             birthDateTime: undefined,
             area: []
           }}
@@ -232,6 +271,23 @@ export default function PredictionForm() {
               onChange={handleNameChange}
               maxLength={10}
             />
+          </Form.Item>
+          
+          <Form.Item
+            name="gender"
+            label="性别"
+            className={styles.formItem}
+            rules={[{ required: true, message: '请选择性别' }]}
+          >
+            <Radio.Group 
+              value={genderValue} 
+              onChange={handleGenderChange}
+            >
+              <div className={styles.radioButtons}>
+                <Radio value="male" className={styles.radioButton}>男</Radio>
+                <Radio value="female" className={styles.radioButton}>女</Radio>
+              </div>
+            </Radio.Group>
           </Form.Item>
           
           <Form.Item
@@ -279,8 +335,15 @@ export default function PredictionForm() {
             loading={loading}
             className={styles.submitButton}
           >
-            开始预测
+            {loading ? '正在预测中...' : '开始预测'}
           </Button>
+          
+          {loading && (
+            <div className={styles.loadingTip}>
+              <SpinLoading color='primary' />
+              <p>正在生成预测结果，请耐心等待（约需1分钟）...</p>
+            </div>
+          )}
         </Form>
       </div>
       

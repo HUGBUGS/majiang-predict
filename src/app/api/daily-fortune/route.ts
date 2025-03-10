@@ -6,6 +6,35 @@ import { getFortuneFromOpenAI } from '../../lib/openai';
 export interface FortuneData {
   lunarDate: string;
   chineseZodiac: string;
+  bazi?: {
+    year: string;
+    month: string;
+    day: string;
+    hour: string;
+  };
+  baziAnalysis?: string; // 生辰八字与麻将的关联分析
+  wuxing?: {
+    summary: string;
+    gold: string;
+    wood: string;
+    water: string;
+    fire: string;
+    earth: string;
+  };
+  twelvePalaces?: {
+    minggong: string; // 命宫
+    wealth: string;   // 财帛宫
+    health: string;   // 疾厄宫
+    travel: string;   // 迁移宫
+  };
+  dayun?: string;
+  liunian?: string;
+  shenshas?: Array<{
+    name: string;
+    type: string;
+    description: string;
+    effect: string;
+  }>;
   goodFor: string[];
   badFor: string[];
   starSign: string;

@@ -11,11 +11,46 @@ export interface PredictionResult {
   luckyItem: string; // 幸运物品
   advice: string; // 建议
   date: string; // 预测日期，格式为 YYYY-MM-DD
+  lunarDate?: string; // 农历日期
+  chineseZodiac?: string; // 生肖
+  starSign?: string; // 星座
+  bazi?: {
+    year: string;
+    month: string;
+    day: string;
+    hour: string;
+  };
+  baziAnalysis?: string; // 生辰八字与麻将的关联分析
+  wuxing?: {
+    summary: string;
+    gold: string;
+    wood: string;
+    water: string;
+    fire: string;
+    earth: string;
+  };
+  twelvePalaces?: {
+    minggong: string; // 命宫
+    wealth: string;   // 财帛宫
+    health: string;   // 疾厄宫
+    travel: string;   // 迁移宫
+  };
+  dayun?: string;
+  liunian?: string;
+  shenshas?: Array<{
+    name: string;
+    type: string;
+    description: string;
+    effect: string;
+  }>;
+  goodFor?: string[];
+  badFor?: string[];
 }
 
 // 定义请求参数接口
 export interface PredictionParams {
   name: string; // 姓名
+  gender: 'male' | 'female'; // 性别
   birthdate: string; // 出生日期，格式为 YYYY-MM-DD HH:mm:ss
   province: string; // 省份代码
   city: string; // 城市代码
@@ -24,7 +59,7 @@ export interface PredictionParams {
 }
 
 // 每日最大测算次数
-const MAX_PREDICTIONS_PER_DAY = 3;
+const MAX_PREDICTIONS_PER_DAY = 300;
 
 // 生成预测结果
 async function generatePrediction(params: PredictionParams): Promise<PredictionResult> {
@@ -41,14 +76,26 @@ async function generatePrediction(params: PredictionParams): Promise<PredictionR
     // 确保 advice 不为 undefined
     const advice = fortuneData.advice || `${params.name}今日宜坐${fortuneData.luckyDirection}方，带上${fortuneData.luckyNumber}元${fortuneData.luckyItem}作为幸运物。${fortuneData.goodFor.join('，')}。避免${fortuneData.badFor.join('，')}。`;
     
-    // 直接使用 AI 生成的个性化预测结果
+    // 返回完整的预测结果，包括新增字段
     return {
       direction: fortuneData.luckyDirection,
       luckyNumber: fortuneData.luckyNumber,
       luckyColor: fortuneData.luckyColor,
       luckyItem: fortuneData.luckyItem,
       advice,
-      date: formattedDate
+      date: formattedDate,
+      lunarDate: fortuneData.lunarDate,
+      chineseZodiac: fortuneData.chineseZodiac,
+      starSign: fortuneData.starSign,
+      bazi: fortuneData.bazi,
+      baziAnalysis: fortuneData.baziAnalysis,
+      wuxing: fortuneData.wuxing,
+      twelvePalaces: fortuneData.twelvePalaces,
+      dayun: fortuneData.dayun,
+      liunian: fortuneData.liunian,
+      shenshas: fortuneData.shenshas,
+      goodFor: fortuneData.goodFor,
+      badFor: fortuneData.badFor
     };
   } catch (error) {
     console.error('生成预测结果失败:', error);
@@ -63,7 +110,7 @@ export async function POST(request: NextRequest) {
     const params: PredictionParams = await request.json();
     
     // 验证必要参数
-    if (!params.name || !params.birthdate || !params.province || !params.city || !params.district || !params.deviceFingerprint) {
+    if (!params.name || !params.gender || !params.birthdate || !params.province || !params.city || !params.district || !params.deviceFingerprint) {
       return NextResponse.json(
         { success: false, message: '缺少必要参数' },
         { status: 400 }
@@ -87,6 +134,7 @@ export async function POST(request: NextRequest) {
     // 检查是否已存在相同条件的预测结果
     const existingPrediction = await getExistingPrediction(
       params.name,
+      params.gender,
       params.birthdate,
       params.province,
       params.city,
@@ -107,25 +155,37 @@ export async function POST(request: NextRequest) {
       prediction = await generatePrediction(params);
       
       // 保存到数据库
-      predictionId = await savePrediction({
-        userId: user.id,
-        name: params.name,
-        birthdate: params.birthdate,
-        province: params.province,
-        city: params.city,
-        district: params.district,
-        direction: prediction.direction,
-        luckyNumber: prediction.luckyNumber,
-        luckyColor: prediction.luckyColor,
-        luckyItem: prediction.luckyItem,
-        advice: prediction.advice,
-        date: prediction.date
-      });
+      console.log('接收到的预测参数:', params);
+      console.log('AI 生成的预测结果:', prediction);
+      predictionId = await savePrediction(
+        user.id.toString(),
+        params.name,
+        params.gender,
+        params.birthdate,
+        params.province,
+        params.city,
+        params.district,
+        prediction.bazi,
+        prediction.baziAnalysis,
+        prediction.wuxing,
+        prediction.twelvePalaces,
+        prediction.dayun,
+        prediction.liunian,
+        prediction.shenshas,
+        prediction.direction,
+        prediction.luckyNumber.toString(),
+        prediction.luckyColor,
+        prediction.luckyItem,
+        prediction.advice,
+        prediction.date
+      );
     }
     
     // 如果保存成功，添加 ID 到结果中
-    if (predictionId && !prediction.id) {
+    if (predictionId) {
       prediction.id = predictionId;
+    } else {
+      console.error('保存预测结果失败，无法获取ID');
     }
     
     // 返回 JSON 响应

@@ -33,6 +33,7 @@ CREATE TABLE IF NOT EXISTS predictions (
     id INT AUTO_INCREMENT PRIMARY KEY,
     user_id INT NOT NULL,
     user_name VARCHAR(50) NOT NULL,
+    gender ENUM('male', 'female') NOT NULL DEFAULT 'male',
     birthdate DATETIME NOT NULL,
     province VARCHAR(20) NOT NULL,
     city VARCHAR(20) NOT NULL,

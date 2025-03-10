@@ -33,11 +33,259 @@
   margin-bottom: 20px;
 }
 
+.section {
+  margin-bottom: 24px;
+  padding: 16px;
+  border-radius: 8px;
+  background-color: #f9f9f9;
+}
+
+.sectionTitle {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid #eee;
+}
+
+/* 生辰八字卡片样式 */
+.baziGrid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.baziColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.baziLabel {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.baziValue {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.baziAnalysis {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 五行卡片样式 */
+.wuxingGrid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.wuxingColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 10px 5px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.wuxingLabel {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 6px;
+}
+
+.wuxingValue {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+  text-align: center;
+}
+
+.wuxingAnalysis {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+/* 十二宫卡片样式 */
+.twelvePalacesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.palaceColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.palaceLabel {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.palaceValue {
+  font-size: 14px;
+  color: #333;
+  text-align: center;
+}
+
+/* 命理运势样式 */
+.fortuneGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.fortuneColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.fortuneLabel {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.fortuneValue {
+  font-size: 14px;
+  color: #333;
+  text-align: center;
+}
+
+.shenshasContainer {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.shenshasGrid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 8px;
+}
+
+.shenshaCard {
+  background-color: #fff;
+  border-radius: 8px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  margin-bottom: 8px;
+}
+
+.shenshaHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.shenshaName {
+  font-size: 16px;
+  font-weight: bold;
+  color: #333;
+}
+
+.shenshaType {
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.shenshaGood {
+  background-color: #e6f7ff;
+  color: #1890ff;
+}
+
+.shenshaBad {
+  background-color: #fff2e8;
+  color: #fa541c;
+}
+
+.shenshaDescription {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+  line-height: 1.5;
+}
+
+.shenshaEffect {
+  font-size: 14px;
+  color: #333;
+  line-height: 1.5;
+  padding-top: 8px;
+  border-top: 1px dashed #eee;
+}
+
+.fortuneAnalysis {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.analysisLabel {
+  font-size: 15px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 8px;
+}
+
+.analysisContent {
+  font-size: 14px;
+  line-height: 1.5;
+  color: #444;
+  white-space: pre-wrap;
+}
+
 .resultItem {
   margin-bottom: 16px;
   padding: 12px;
   border-radius: 8px;
   background-color: #f9f9f9;
+}
+
+.section .resultItem {
+  background-color: #fff;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.05);
 }
 
 .itemLabel {
@@ -50,6 +298,8 @@
   font-size: 18px;
   font-weight: bold;
   color: #333;
+  line-height: 1.5;
+  white-space: pre-wrap;
 }
 
 .buttonGroup {
@@ -89,4 +339,42 @@
 .errorContainer p {
   margin-bottom: 24px;
   color: #666;
+}
+
+/* 麻将运势卡片样式 */
+.mahjongGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.mahjongColumn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.mahjongLabel {
+  font-size: 14px;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.mahjongValue {
+  font-size: 14px;
+  color: #333;
+  text-align: center;
+}
+
+.mahjongAdvice {
+  background-color: #fff;
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
 } 
