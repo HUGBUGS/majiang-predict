@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Button, DotLoading } from 'antd-mobile';
 import styles from './result.module.css';
 
@@ -16,9 +16,8 @@ interface PredictionResult {
   date: string;
 }
 
-// 创建一个包装组件，用于处理 useSearchParams
-function ResultContent() {
-  const searchParams = useSearchParams();
+// 主页面组件
+export default function ResultPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [result, setResult] = useState<PredictionResult | null>(null);
@@ -27,7 +26,10 @@ function ResultContent() {
   useEffect(() => {
     const fetchResult = async () => {
       try {
-        const id = searchParams.get('id');
+        // 从 URL 获取 ID
+        const url = new URL(window.location.href);
+        const id = url.searchParams.get('id');
+        
         if (!id) {
           setError('未找到预测ID，请返回首页重新预测');
           setLoading(false);
@@ -58,7 +60,7 @@ function ResultContent() {
     };
 
     fetchResult();
-  }, [searchParams]);
+  }, []);
 
   const handleBackHome = () => {
     router.push('/');
@@ -149,19 +151,5 @@ function ResultContent() {
         </div>
       </div>
     </div>
-  );
-}
-
-// 主页面组件，使用 Suspense 包裹 ResultContent
-export default function ResultPage() {
-  return (
-    <Suspense fallback={
-      <div className={styles.loadingContainer}>
-        <DotLoading color='primary' />
-        <p>正在加载...</p>
-      </div>
-    }>
-      <ResultContent />
-    </Suspense>
   );
 } 
